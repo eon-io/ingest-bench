@@ -1,0 +1,25 @@
+name: aws-smoke-spark
+engine: spark
+corpus: smoke
+table:
+  partition: identity(partition_key)
+kafka:
+  partitions: 4
+  key: partition_key
+  partition_assignment: key
+producer:
+  shards: 1
+scoring:
+  freshness_bound_s: 60
+  warmup_s: 60
+spark:
+  # Set the actual node instance type before publishing; this does not select nodes.
+  # machine_type: YOUR_MACHINE_TYPE
+  # Four executor cores, matching local smoke. Cluster executors have separate JVMs;
+  # allocate 4 GiB each for decoding and buffering.
+  executors: 2
+  executor_cores: 2
+  executor_mem_mb: 4096
+  driver_mem_mb: 2048
+  trigger_interval: "10 seconds"
+  distribution_mode: hash

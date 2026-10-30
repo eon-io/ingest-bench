@@ -1,0 +1,58 @@
+# Optional in-memory Confluent-compatible registry. setup.sh applies it with
+# WITH_SCHEMA_REGISTRY=true; teardown removes it with the namespace.
+#
+# A restart loses registered schemas and can interrupt active runs. Configure
+# an external registry in site.yaml if schemas must survive pod replacement.
+# See deploy/aws/README.md for template conventions.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: schema-registry
+  namespace: __NAMESPACE__
+  labels:
+    lakehouse-ingest-bench: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: schema-registry
+  template:
+    metadata:
+      labels:
+        app: schema-registry
+        lakehouse-ingest-bench: "true"
+    spec:
+      nodeSelector: __NODE_SELECTOR__
+      tolerations: __TOLERATIONS__
+      containers:
+        - name: schema-registry
+          image: quay.io/apicurio/apicurio-registry:3.0.15
+          ports:
+            - name: http
+              containerPort: 8080
+          # Wait for registration readiness, not merely an open port.
+          readinessProbe:
+            httpGet: {path: /health/ready, port: http}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /health/live, port: http}
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: schema-registry
+  namespace: __NAMESPACE__
+  labels:
+    lakehouse-ingest-bench: "true"
+spec:
+  selector:
+    app: schema-registry
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

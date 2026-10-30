@@ -1,0 +1,18 @@
+lakehouse-ingest-bench
+Copyright 2026 Eon io Ltd
+
+Except where otherwise noted, this benchmark is licensed under the Creative
+Commons Attribution-NonCommercial-ShareAlike 4.0 International Public License
+(CC BY-NC-SA 4.0). See LICENSE or
+https://creativecommons.org/licenses/by-nc-sa/4.0/.
+
+Third-party notices
+
+engines/flink/log4j-console.properties is from Apache Flink 2.2.1 and is licensed
+under Apache-2.0 (see LICENSES/Apache-2.0.txt). Its upstream attribution follows:
+
+Apache Flink
+Copyright 2014-2025 The Apache Software Foundation
+
+This product includes software developed at
+The Apache Software Foundation (http://www.apache.org/).

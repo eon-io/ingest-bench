@@ -1,0 +1,16 @@
+# Keep catalog metadata storage independent of broker throughput tuning.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ingest-bench-catalog
+  labels:
+    lakehouse-ingest-bench: "true"
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  throughput: "125"
+  iops: "3000"
+  encrypted: "true"
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true

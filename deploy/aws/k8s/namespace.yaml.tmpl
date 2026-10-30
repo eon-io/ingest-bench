@@ -1,0 +1,97 @@
+# Shared namespace and service accounts, rendered by setup.sh with envsubst.
+# ${NAMESPACE} is the only variable. Keep account names stable because EKS
+# Pod Identity binds to each namespace/service-account pair.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ${NAMESPACE}
+  labels:
+    lakehouse-ingest-bench: "true"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ingest-bench-harness
+  namespace: ${NAMESPACE}
+  labels:
+    lakehouse-ingest-bench: "true"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ingest-bench-flink
+  namespace: ${NAMESPACE}
+  labels:
+    lakehouse-ingest-bench: "true"
+---
+# Grant the JobManager the pod and ConfigMap permissions required to manage
+# TaskManagers, matching the operator chart's Flink role.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ingest-bench-flink
+  namespace: ${NAMESPACE}
+  labels:
+    lakehouse-ingest-bench: "true"
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "configmaps"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "deployments/finalizers"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ingest-bench-flink
+  namespace: ${NAMESPACE}
+  labels:
+    lakehouse-ingest-bench: "true"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ingest-bench-flink
+subjects:
+  - kind: ServiceAccount
+    name: ingest-bench-flink
+    namespace: ${NAMESPACE}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ingest-bench-spark
+  namespace: ${NAMESPACE}
+  labels:
+    lakehouse-ingest-bench: "true"
+---
+# Grant the driver permissions to create executors, their ConfigMap, and
+# headless Service. Bind the benchmark's pod-identity account instead of
+# the account the Spark operator chart would create.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ingest-bench-spark
+  namespace: ${NAMESPACE}
+  labels:
+    lakehouse-ingest-bench: "true"
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "configmaps", "persistentvolumeclaims", "services"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "deletecollection"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ingest-bench-spark
+  namespace: ${NAMESPACE}
+  labels:
+    lakehouse-ingest-bench: "true"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ingest-bench-spark
+subjects:
+  - kind: ServiceAccount
+    name: ingest-bench-spark
+    namespace: ${NAMESPACE}

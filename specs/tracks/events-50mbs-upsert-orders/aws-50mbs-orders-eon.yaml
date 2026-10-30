@@ -1,0 +1,17 @@
+name: aws-50mbs-orders-eon
+engine: external
+track: events-50mbs-upsert-orders
+table:
+  format_version: 3
+  managed_by: harness
+producer:
+  shards: 4
+external:
+  name: Eon Data Engine
+  version: "d073b147"
+  notes: "upsert on primary key (event_id, partition_key), newest by id; 30 s commits; source dedup off; compaction parked"
+# Over the hour the writer peaked at 66% of its memory, the committer at 78% and the reader at 57%.
+fleet:
+  - {role: reader, count: 1, vcpu: 1, gib: 3, machine_type: m8g.4xlarge}
+  - {role: writer, count: 1, vcpu: 2, gib: 4, machine_type: m8g.4xlarge}
+  - {role: committer, count: 1, vcpu: 1, gib: 3, machine_type: m8g.4xlarge}

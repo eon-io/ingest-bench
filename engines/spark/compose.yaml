@@ -1,0 +1,30 @@
+# The local stack supplies Kafka, storage, and the catalog. local[N] runs
+# the whole fleet in one driver JVM; this validates integration on a laptop.
+#
+# Compose interpolates inactive profiles, so RUN_DIR defaults to a nonexistent
+# path and fails only on submission. Sizing comes from job.env; defaults allow
+# the Compose model to render before a run exists.
+services:
+  spark-job:
+    profiles: [spark]
+    build:
+      context: ../..
+      dockerfile: engines/spark/Dockerfile
+    image: lakehouse-ingest-bench/spark:local
+    # Expose the driver's UI for query readiness checks.
+    ports: ["4040:4040"]
+    environment:
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+    volumes: ["${RUN_DIR:-/nonexistent/run}:/opt/bench/run:ro"]
+    command:
+      - /opt/spark/bin/spark-submit
+      - --master
+      - local[${LOCAL_CORES:-4}]
+      - --driver-memory
+      - ${DRIVER_MEM_MB:-2048}m
+      - --properties-file
+      - /opt/bench/run/spark-defaults.conf
+      - /opt/bench/engines/spark/stream_to_iceberg.py
+    depends_on: [kafka, minio-init, iceberg-rest]

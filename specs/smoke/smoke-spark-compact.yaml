@@ -1,0 +1,39 @@
+# Spark ingest with the rewrite sidecar beside it, on the smoke corpus. This checks the
+# layer's integration, not its performance, because the whole stack shares one machine.
+#
+# Run it with: scripts/smoke.sh --engine spark --spec specs/smoke/smoke-spark-compact.yaml
+name: smoke-spark-compact
+engine: spark
+corpus: smoke
+table:
+  partition: identity(partition_key)
+  properties:
+    # Small target for local integration; production specs use larger files.
+    write.target-file-size-bytes: "8388608"
+kafka:
+  partitions: 4
+  key: partition_key
+  partition_assignment: key
+producer:
+  shards: 1
+scoring:
+  freshness_bound_s: 60
+  warmup_s: 60
+spark:
+  executors: 2
+  executor_cores: 2
+  executor_mem_mb: 2048
+  trigger_interval: "10 seconds"
+  distribution_mode: hash
+compaction:
+  driver: spark-rewrite
+  # Short enough that a smoke lasting a couple of minutes sees several passes.
+  interval_s: 15
+  spark-rewrite:
+    executors: 1
+    executor_cores: 2
+    executor_mem_mb: 2048
+    rewrite_options:
+      # Iceberg's default of 5 would leave the smoke's few files alone, and a
+      # run where nothing was rewritten proves nothing about rewriting.
+      min-input-files: "2"

@@ -1,0 +1,28 @@
+# Flink smoke with Confluent framing. The avro-confluent source resolves writer schemas by
+# header ID. Set kafka.schema_registry in the site before staging.
+name: smoke-flink-confluent
+engine: flink
+corpus: smoke
+table:
+  partition: identity(partition_key)
+kafka:
+  partitions: 4
+  key: partition_key
+  partition_assignment: key
+  value_encoding: confluent
+producer:
+  shards: 1
+scoring:
+  freshness_bound_s: 60
+  warmup_s: 60
+flink:
+  taskmanagers: 2
+  slots: 4
+  tm_cpu: 2
+  tm_mem_mb: 2048
+  jm_cpu: 1
+  jm_mem_mb: 1024
+  checkpoint_interval: 10s
+  min_pause: 2s
+  source_parallelism: 4
+  distribution_mode: hash

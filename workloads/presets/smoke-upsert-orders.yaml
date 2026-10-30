@@ -1,0 +1,27 @@
+# Laptop and CI orders corpus: five minutes at 5 MB/s of 1 KB order changes over 200k orders
+# the engine loads from Kafka first, partitioned by creation hour. See docs/corpus.md#upsert-corpora.
+schema: events
+offered_bytes_per_s: 5MB
+duration_s: 300
+# Four hours of seed history plus the stream, in hours.
+partition_count: 5
+alpha: 0.0
+target_row_bytes: 1024
+batch_interval_ms: 1000
+corpus_epoch: "2026-01-01T00:00:00Z"
+kafka_key_columns: [event_id, partition_key]
+column_overrides: {}
+upsert:
+  key_column: event_id
+  key_layout: time_ordered
+  partition_layout: creation_hour
+  kafka_partitions: 16
+  seed_keys: 200000
+  seed_delivery: kafka
+  seed_history_s: 14400
+  new_key_fraction: 0.10
+  updates:
+    # The delivery itself: placed, accepted, prepared, picked up, delivered, within 45 minutes.
+    - {share: 0.95, target: recent, age: {distribution: exponential, mean_s: 300, max_s: 2700}}
+    # Tips, ratings and adjustments, within an hour of the order.
+    - {share: 0.05, target: recent, age: {distribution: exponential, mean_s: 1800, max_s: 3600}}

@@ -1,0 +1,46 @@
+# Dump an upsert run's live rows at its sampled snapshots with one Spark reader, whatever engine
+# wrote the table, so live-state checks and scan times compare engines on the same footing.
+# Rendered by ingest_bench/k8s/render.py, which rejects unfilled markers.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: __NAME__
+  namespace: __NAMESPACE__
+  labels:
+    lakehouse-ingest-bench: "true"
+spec:
+  # One attempt: finish.sh starts a fresh attempt directory for any retry.
+  backoffLimit: 0
+  # Stop at finish.sh's wait, so a hung scan cannot hold its CPUs; the TTL starts only once it ends.
+  activeDeadlineSeconds: __DEADLINE_S__
+  ttlSecondsAfterFinished: 3600
+  completions: 1
+  template:
+    metadata:
+      labels:
+        lakehouse-ingest-bench: "true"
+    spec:
+      restartPolicy: Never
+      serviceAccountName: __SERVICE_ACCOUNT__
+      nodeSelector: __NODE_SELECTOR__
+      tolerations: __TOLERATIONS__
+      containers:
+        - name: spark
+          image: __IMAGE__
+          command: __COMMAND__
+          env: __ENV__
+          envFrom: __ENV_FROM__
+          # Requests equal limits so local[N] gets exactly N cores on any node, and scan times compare.
+          resources:
+            requests:
+              cpu: "__CPU__"
+              memory: "__MEMORY__"
+            limits:
+              cpu: "__CPU__"
+              memory: "__MEMORY__"
+          volumeMounts:
+            - name: work
+              mountPath: /tmp
+      volumes:
+        - name: work
+          emptyDir: {}

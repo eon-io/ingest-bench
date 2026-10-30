@@ -1,0 +1,25 @@
+# Bootstrap Service name: <name>-kafka-bootstrap.
+name: ingest-bench
+# Keep the Kafka and metadata versions compatible with the pinned Strimzi release.
+kafkaVersion: "4.3.1"
+metadataVersion: "4.3-IV0"
+# Each replica is a broker and controller. Derive replication from broker count.
+brokers: 3
+storage:
+  size: 500Gi
+  # Empty selects the cluster's default StorageClass.
+  class: ""
+resources:
+  cpu: "4"
+  memory: 16Gi
+# Reserve memory outside the fixed heap for the log's page cache.
+jvmHeap: 6g
+# Kafka's own defaults, sized for about four cores. Raise them with the broker's CPU.
+ioThreads: 8
+networkThreads: 3
+metrics:
+  # Metrics add broker instrumentation and one small consumer-lag exporter pod.
+  enabled: false
+# Strimzi requires node affinity rather than a pod-template nodeSelector.
+nodeSelector: {}
+tolerations: []

@@ -1,0 +1,26 @@
+# Local fixture configuration, mounted at /site.yaml. Addresses are Compose
+# service names and credentials are public MinIO defaults. Real deployments
+# copy site.example.yaml and keep credentials out of Git. Local checks use
+# zero pricing because they are not published performance results.
+corpus_root: s3://corpus
+runs_root: s3://runs
+warehouse: s3://warehouse
+kafka:
+  bootstrap_servers: kafka:9092
+  security: {}
+  # Confluent-compatible endpoint for schema registration and lookup.
+  schema_registry:
+    url: http://schema-registry:8080/apis/ccompat/v7
+catalog:
+  props:
+    uri: http://iceberg-rest:8181
+    warehouse: s3://warehouse/
+    s3.endpoint: http://minio:9000
+    s3.access-key-id: admin
+    s3.secret-access-key: password
+    s3.path-style-access: "true"
+    s3.region: us-east-1
+kubernetes: {}
+pricing:
+  vcpu_hour_usd: 0.0
+  gib_hour_usd: 0.0

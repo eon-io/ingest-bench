@@ -1,0 +1,116 @@
+[project]
+name = "lakehouse-ingest-bench"
+version = "0.1.0"
+description = "Benchmark for streaming ingest from Kafka into Apache Iceberg"
+readme = "README.md"
+license = "CC-BY-NC-SA-4.0"
+license-files = ["LICENSE", "NOTICE", "LICENSES/*.txt"]
+requires-python = ">=3.12"
+authors = [{ name = "Eon io Ltd" }]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Database",
+  "Topic :: System :: Benchmark",
+]
+dependencies = [
+  "numpy>=1.26",
+  "pyarrow>=16",
+  "fastavro>=1.9",
+  "zstandard>=0.22",
+  "confluent-kafka>=2.5",
+  "pyiceberg[pyarrow,s3fs,gcsfs,sql-sqlite]>=0.9",
+  "fsspec>=2024.6",
+  "s3fs>=2024.6",
+  "gcsfs>=2024.6",
+  "pyyaml>=6",
+]
+
+# Replace these URLs with the project's public locations before publishing.
+[project.urls]
+Homepage = "https://example.invalid/lakehouse-ingest-bench"
+Source = "https://example.invalid/lakehouse-ingest-bench"
+Issues = "https://example.invalid/lakehouse-ingest-bench/issues"
+
+[project.optional-dependencies]
+# Optional MSK IAM signer and AWS credential support. Other sites do not need the AWS SDK.
+aws = ["aws-msk-iam-sasl-signer-python>=1.0", "boto3>=1.34"]
+
+[project.scripts]
+gen-corpus = "ingest_bench.corpus.cli:gen_corpus"
+merge-corpus = "ingest_bench.corpus.cli:merge_corpus"
+seed-corpus = "ingest_bench.corpus.cli:seed_corpus"
+commit-seed = "ingest_bench.corpus.cli:commit_seed"
+produce = "ingest_bench.producer.cli:main"
+create-table = "ingest_bench.table.cli:create"
+drop-table = "ingest_bench.table.cli:drop"
+table-metadata = "ingest_bench.table.cli:metadata_location"
+score = "ingest_bench.scorer.cli:score"
+rescore-freshness = "ingest_bench.scorer.rescore:main"
+gate = "ingest_bench.scorer.cli:gate"
+file-sizes = "ingest_bench.scorer.cli:file_sizes"
+compaction = "ingest_bench.scorer.cli:compaction"
+verify-table = "ingest_bench.scorer.cli:verify_table"
+verify-upsert = "ingest_bench.scorer.cli:verify_upsert"
+table-health = "ingest_bench.scorer.cli:table_health"
+upsert-scan-plan = "ingest_bench.scorer.cli:upsert_scan_plan"
+wait-seed = "ingest_bench.scorer.cli:wait_seed"
+stage = "ingest_bench.stage:main"
+collect = "ingest_bench.collect.cli:main"
+results-table = "ingest_bench.collect.cli:results_table_main"
+drop-topic = "ingest_bench.kafka_admin:main"
+render-k8s = "ingest_bench.k8s.render:main"
+engine-k8s = "ingest_bench.k8s.engine:main"
+engine-fleet = "ingest_bench.k8s.fleet:main"
+verify-flink = "engines.flink.verify:main"
+verify-spark = "engines.spark.verify:main"
+render-spark-scan = "engines.spark.scan_conf:main"
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.11", "types-PyYAML"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["ingest_bench", "engines", "compactors"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "B", "I", "UP", "ASYNC"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+files = ["ingest_bench", "engines", "compactors", "tests"]
+
+[[tool.mypy.overrides]]
+module = ["confluent_kafka.*", "fastavro.*", "fsspec.*", "s3fs.*", "gcsfs.*", "pyarrow.*", "zstandard.*"]
+ignore_missing_imports = true
+
+# PySpark runs in its engine image and is not installed in the harness environment.
+[[tool.mypy.overrides]]
+module = ["pyspark.*"]
+ignore_missing_imports = true
+
+# confluent_kafka.admin re-exports typed extension names without __all__. Allow those
+# imports under strict mypy without importing the untyped extension directly.
+[[tool.mypy.overrides]]
+module = ["confluent_kafka.*"]
+implicit_reexport = true
+
+# The optional MSK signer has no type information.
+[[tool.mypy.overrides]]
+module = ["aws_msk_iam_sasl_signer.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["integration: needs the local compose stack"]

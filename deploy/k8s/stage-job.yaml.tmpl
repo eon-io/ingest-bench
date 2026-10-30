@@ -1,0 +1,52 @@
+# Stage inside the broker's network. Mount the run spec and site config
+# from ConfigMaps created by the driver. Unlike generic harness commands,
+# staging needs both files.
+#
+# Publish the run directory from emptyDir to object storage before the pod exits.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: __NAME__
+  namespace: __NAMESPACE__
+  labels:
+    lakehouse-ingest-bench: "true"
+spec:
+  backoffLimit: 0
+  completions: 1
+  template:
+    metadata:
+      labels:
+        lakehouse-ingest-bench: "true"
+    spec:
+      restartPolicy: Never
+      serviceAccountName: __SERVICE_ACCOUNT__
+      nodeSelector: __NODE_SELECTOR__
+      tolerations: __TOLERATIONS__
+      containers:
+        - name: harness
+          image: __IMAGE__
+          command: __COMMAND__
+          env: __ENV__
+          envFrom: __ENV_FROM__
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+          volumeMounts:
+            - name: work
+              mountPath: /work
+            - name: spec
+              mountPath: /runs
+              readOnly: true
+            - name: site
+              mountPath: /site
+              readOnly: true
+      volumes:
+        - name: work
+          emptyDir: {}
+        - name: spec
+          configMap:
+            name: __SPEC_CONFIGMAP__
+        - name: site
+          configMap:
+            name: __SITE_CONFIGMAP__

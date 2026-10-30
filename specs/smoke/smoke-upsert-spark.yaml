@@ -1,0 +1,28 @@
+# Local upsert smoke: Spark's guarded MERGE on a v3 merge-on-read table over the smoke-upsert seed.
+name: smoke-upsert-spark
+engine: spark
+corpus: smoke-upsert
+table:
+  partition: identity(partition_key)
+  format_version: 3
+  properties:
+    write.merge.mode: merge-on-read
+    write.update.mode: merge-on-read
+    write.delete.mode: merge-on-read
+kafka:
+  partitions: 16
+  key: event_id
+  partition_assignment: corpus
+producer:
+  shards: 1
+scoring:
+  freshness_bound_s: 60
+  warmup_s: 60
+  exactness: LATEST_PER_KEY
+  geometry_offsets_s: [61, 127, 193]
+spark:
+  executors: 2
+  executor_cores: 2
+  executor_mem_mb: 2048
+  trigger_interval: "10 seconds"
+  distribution_mode: hash

@@ -1,0 +1,13 @@
+# Standard corpus: 200 columns, one hour at approximately 1 M rows/s.
+# Whole 1024-row blocks give 1,000,448 rows/s after the first batch.
+# Generation peaked at 7.8 GiB per batch locally; use GEN_MEMORY=10Gi.
+schema: events200
+offered_bytes_per_s: 1376MB
+duration_s: 3600
+partition_count: 512
+alpha: 0.0
+target_row_bytes: 1375
+batch_interval_ms: 1000
+corpus_epoch: "2026-01-01T00:00:00Z"
+kafka_key_columns: [user_id, partition_key]
+column_overrides: {}

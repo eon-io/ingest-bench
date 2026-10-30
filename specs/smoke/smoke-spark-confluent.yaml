@@ -1,0 +1,24 @@
+# Spark smoke with Confluent framing. The job strips the five-byte header and decodes
+# using the corpus schema. Staging still requires kafka.schema_registry to register the
+# header's schema ID.
+name: smoke-spark-confluent
+engine: spark
+corpus: smoke
+table:
+  partition: identity(partition_key)
+kafka:
+  partitions: 4
+  key: partition_key
+  partition_assignment: key
+  value_encoding: confluent
+producer:
+  shards: 1
+scoring:
+  freshness_bound_s: 60
+  warmup_s: 60
+spark:
+  executors: 2
+  executor_cores: 2
+  executor_mem_mb: 2048
+  trigger_interval: "10 seconds"
+  distribution_mode: hash

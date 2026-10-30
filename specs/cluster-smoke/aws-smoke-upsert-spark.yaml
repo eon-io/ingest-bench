@@ -1,0 +1,33 @@
+# Cluster upsert smoke: Spark's guarded MERGE on a v3 merge-on-read table over the smoke-upsert
+# seed. Build the corpus and its seed with scripts/gen-corpus.sh smoke-upsert first.
+name: aws-smoke-upsert-spark
+engine: spark
+corpus: smoke-upsert
+table:
+  partition: identity(partition_key)
+  format_version: 3
+  properties:
+    write.merge.mode: merge-on-read
+    write.update.mode: merge-on-read
+    write.delete.mode: merge-on-read
+kafka:
+  partitions: 16
+  key: event_id
+  partition_assignment: corpus
+producer:
+  shards: 1
+scoring:
+  freshness_bound_s: 60
+  warmup_s: 60
+  exactness: LATEST_PER_KEY
+  geometry_offsets_s: [61, 127, 193]
+spark:
+  # Set the actual node instance type before publishing; this does not select nodes.
+  # machine_type: YOUR_MACHINE_TYPE
+  # The fleet of aws-smoke-spark: the offer is the same 5 MB/s.
+  executors: 2
+  executor_cores: 2
+  executor_mem_mb: 4096
+  driver_mem_mb: 2048
+  trigger_interval: "10 seconds"
+  distribution_mode: hash

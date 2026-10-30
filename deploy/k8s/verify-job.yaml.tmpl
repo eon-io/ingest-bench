@@ -1,0 +1,47 @@
+# Validate final live rows next to object storage. Campaign scans can read
+# billions of IDs across hundreds of thousands of files, so running in-cluster
+# avoids transferring that scan through the operator's host.
+# Rendered by ingest_bench/k8s/render.py, which rejects unfilled markers.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: __NAME__
+  namespace: __NAMESPACE__
+  labels:
+    lakehouse-ingest-bench: "true"
+spec:
+  # One attempt: a second scan of the same pinned snapshot would only repeat the
+  # verdict. finish.sh deletes a successful Job and leaves a failed one to be
+  # read; the expiry is for the case where nobody does.
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600
+  completions: 1
+  template:
+    metadata:
+      labels:
+        lakehouse-ingest-bench: "true"
+    spec:
+      restartPolicy: Never
+      serviceAccountName: __SERVICE_ACCOUNT__
+      nodeSelector: __NODE_SELECTOR__
+      tolerations: __TOLERATIONS__
+      containers:
+        - name: harness
+          image: __IMAGE__
+          command: __COMMAND__
+          env: __ENV__
+          envFrom: __ENV_FROM__
+          # Sized by the caller: the one-bit-per-ID set alone is about 1 GiB for
+          # eight billion IDs, plus one Parquet ID column per concurrent reader.
+          resources:
+            requests:
+              cpu: "__CPU__"
+              memory: "__MEMORY__"
+            limits:
+              memory: "__MEMORY__"
+          volumeMounts:
+            - name: work
+              mountPath: /work
+      volumes:
+        - name: work
+          emptyDir: {}

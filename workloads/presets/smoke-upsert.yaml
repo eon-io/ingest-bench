@@ -1,0 +1,21 @@
+# Laptop and CI upsert corpus: five minutes at 5 MB/s over a 1M-key seed table.
+# See docs/corpus.md#upsert-corpora.
+schema: events
+offered_bytes_per_s: 5MB
+duration_s: 300
+partition_count: 64
+alpha: 1.0
+target_row_bytes: 256
+batch_interval_ms: 1000
+corpus_epoch: "2026-01-01T00:00:00Z"
+kafka_key_columns: [event_id, partition_key]
+column_overrides: {}
+upsert:
+  key_column: event_id
+  kafka_partitions: 16
+  seed_keys: 1000000
+  new_key_fraction: 0.15
+  updates:
+    - {share: 0.75, target: recent, age: {distribution: exponential, mean_s: 300, max_s: 3600}}
+    - {share: 0.20, target: uniform}
+    - {share: 0.05, target: hot, keys: 1000, alpha: 1.0}

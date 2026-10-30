@@ -1,0 +1,26 @@
+# Run manually: each engine builds an image and starts the full Compose stack.
+name: smoke
+on:
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [flink, spark]
+    # Allow time to build the Spark distribution and connector image.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      # Harness commands run inside containers. Keep the host's yq version and checksum in
+      # sync with ci.yml.
+      - run: sudo apt-get update && sudo apt-get install -y jq
+      - run: |
+          sudo curl -fsSL -o /usr/local/bin/yq \
+            https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          printf '%s  /usr/local/bin/yq\n' \
+            a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7 | sha256sum --check --strict
+          sudo chmod +x /usr/local/bin/yq
+          yq --version
+      - run: scripts/smoke.sh --engine ${{ matrix.engine }} --set duration_s=30

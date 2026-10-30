@@ -1,0 +1,25 @@
+name: aws-1mrps-unif-eon-dedup
+engine: external
+track: events-1mrps-uniform
+table:
+  managed_by: harness
+  partition: identity(partition_key)
+  properties:
+    write.parquet.compression-codec: zstd
+    write.parquet.compression-level: "1"
+    write.target-file-size-bytes: "536870912"
+producer:
+  shards: 69
+scoring:
+  gate_adaptation_s: 300
+external:
+  name: Eon Data Engine
+  version: "4aae9978"
+  notes: "Kafka readers and writers one per m8g.4xlarge, committer on m8g.2xlarge; 30 s commits; source dedup on; compaction parked"
+# Source dedup on, so the committer has 2 vCPU and 12 GiB for the dedup index.
+# Over the hour the committer peaked at 11 GiB, readers at 74% of their memory
+# and writers at 26 GiB of 28. No pod restarted.
+fleet:
+  - {role: reader, count: 4, vcpu: 2, gib: 5, machine_type: m8g.4xlarge}
+  - {role: writer, count: 5, vcpu: 5, gib: 28, machine_type: m8g.4xlarge}
+  - {role: committer, count: 1, vcpu: 2, gib: 12, machine_type: m8g.2xlarge}

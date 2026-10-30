@@ -1,0 +1,69 @@
+{
+  "aborted": false,
+  "backlog_rows": 0,
+  "clock_skew_suspected": false,
+  "committed_rows": 5840896,
+  "corpus_hash": "e13842f9",
+  "corpus_uri": "s3://YOUR_BUCKET/corpus/smoke-e13842f9",
+  "epoch_ms": 1788977250000,
+  "exactness": {
+    "corrupt_batches": 0,
+    "duplicate_ppm": 0.0,
+    "duplicate_rows": 0,
+    "exact": true,
+    "expected_rows": 5840896,
+    "loss_rows": 0,
+    "mode": "EXACTLY_ONCE",
+    "rows": 5840896,
+    "scored_batches": 300,
+    "verdict": true,
+    "violations": []
+  },
+  "exactness_mode": "EXACTLY_ONCE",
+  "freshness": {
+    "bound_s": 60.0,
+    "clock": "timestamp_ms",
+    "clock_skew_suspected": false,
+    "drained": true,
+    "full": {
+      "max_s": 31.645,
+      "p50_s": 6.7315000000000005,
+      "p95_s": 15.119999999999989,
+      "p99_s": 28.36
+    },
+    "max_bound_s": 120.0,
+    "min_lag_s": 1.396,
+    "missing_emit_prefixes": [],
+    "verdict": true,
+    "warmup_s": 60,
+    "window": {
+      "max_s": 31.645,
+      "p50_s": 6.745,
+      "p95_s": 18.11999999999999,
+      "p99_s": 28.960000000000022
+    }
+  },
+  "freshness_bound_s": 60.0,
+  "keepup": {
+    "backlog_rows_max": 214016,
+    "backlog_rows_p50": 0.0,
+    "drain_s": 6.598
+  },
+  "lag_s": 31.584,
+  "last_batch": 299,
+  "offer_ended": true,
+  "offered_rows": 5840896,
+  "prefix": 299,
+  "producer": {
+    "behind_ms": 328,
+    "errors": 0
+  },
+  "producer_bound": false,
+  "reason": null,
+  "run_valid": true,
+  "snapshots": 33,
+  "speed": 1.0,
+  "state": "drained",
+  "table": "ingest_bench.t_aws_smoke_flink_20260909T180253Z",
+  "warmup_s": 60
+}

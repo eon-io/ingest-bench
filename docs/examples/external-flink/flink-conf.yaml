@@ -1,0 +1,10 @@
+execution.checkpointing.interval: 10s
+execution.checkpointing.min-pause: 2s
+execution.checkpointing.mode: EXACTLY_ONCE
+execution.checkpointing.unaligned.enabled: 'false'
+jobmanager.memory.process.size: 1024m
+parallelism.default: '4'
+pipeline.max-parallelism: '32'
+pipeline.name: '@RUN_ID@'
+taskmanager.memory.process.size: 2048m
+taskmanager.numberOfTaskSlots: '4'

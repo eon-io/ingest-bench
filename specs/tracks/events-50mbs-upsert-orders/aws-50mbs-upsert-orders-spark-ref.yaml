@@ -1,0 +1,27 @@
+# Reference tier: REFERENCE_KNOBS plus sizing only, guarded MERGE on the upsert track's reference table
+# (merge-on-read on format v3, so deletes are deletion vectors). At this size the 60 s trigger held the hour
+# at p95 94 s and max 106 s, over the track's 90 s p95 bound, so this fleet is a starting point, not a result.
+name: aws-50mbs-upsert-orders-spark-ref
+engine: spark
+track: events-50mbs-upsert-orders
+table:
+  format_version: 3
+  properties:
+    write.merge.mode: merge-on-read
+    write.update.mode: merge-on-read
+    write.delete.mode: merge-on-read
+    write.parquet.compression-codec: zstd
+    write.parquet.compression-level: "1"
+producer:
+  shards: 4
+spark:
+  machine_type: m8g.4xlarge
+  executors: 4
+  executor_cores: 4
+  executor_mem_mb: 12288
+  # Native memory measured more than 2 GiB: 1536 MiB was OOM-killed.
+  executor_overhead_mb: 3072
+  driver_cores: 2
+  driver_mem_mb: 4096
+  trigger_interval: "60 seconds"
+  distribution_mode: hash

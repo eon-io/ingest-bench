@@ -1,0 +1,69 @@
+# The local stack supplies Kafka, storage, and the catalog.
+services:
+  flink-jobmanager:
+    profiles: [flink]
+    build:
+      context: ../..
+      dockerfile: engines/flink/Dockerfile
+    image: lakehouse-ingest-bench/flink:local
+    command: jobmanager
+    ports: ["8081:8081"]
+    environment:
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: flink-jobmanager
+        jobmanager.memory.process.size: ${JM_MEM_MB:-1024}m
+        state.backend.type: hashmap
+        execution.checkpointing.dir: s3://warehouse/_flink/checkpoints
+        s3.endpoint: http://minio:9000
+        s3.path.style.access: true
+        s3.access-key: admin
+        s3.secret-key: password
+    depends_on: [kafka, minio-init, iceberg-rest]
+  flink-taskmanager:
+    profiles: [flink]
+    image: lakehouse-ingest-bench/flink:local
+    command: taskmanager
+    environment:
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.numberOfTaskSlots: ${SLOTS:-4}
+        taskmanager.memory.process.size: ${TM_MEM_MB:-2048}m
+        s3.endpoint: http://minio:9000
+        s3.path.style.access: true
+        s3.access-key: admin
+        s3.secret-key: password
+    depends_on: [flink-jobmanager]
+  # Submit once after the flink profile is ready. Avoid cross-profile
+  # depends_on entries; compose.sh handles ordering and slot readiness.
+  #
+  # Detached submission (-d) exits when the cluster accepts the job. Pair an
+  # attached submission with --wait to block instead.
+  #
+  # RUN_DIR has a default because Compose interpolates inactive profiles too.
+  # The nonexistent default causes only an actual submission to fail.
+  flink-job:
+    profiles: [flink-job]
+    image: lakehouse-ingest-bench/flink:local
+    volumes: ["${RUN_DIR:-/nonexistent/run}:/opt/bench/run:ro"]
+    environment: [AWS_REGION=us-east-1]
+    command:
+      - "flink"
+      - "run"
+      - "-d"
+      - "-m"
+      - "flink-jobmanager:8081"
+      - "-c"
+      - "org.ingestbench.flink.SqlRunner"
+      - "/opt/bench/sql-runner.jar"
+      - "--sql"
+      - "/opt/bench/run/job.sql"
+      - "--conf"
+      - "/opt/bench/run/flink-conf.yaml"

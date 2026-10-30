@@ -1,0 +1,29 @@
+# The rewrite sidecar's local shape. It shares the Spark engine's image and
+# differs only in its entry script and its sizing, but it lives here because it
+# runs beside whichever engine is ingesting, including one this stack does not
+# start.
+#
+# Compose interpolates inactive profiles, so RUN_DIR defaults to a nonexistent
+# path and fails only on submission. Sizing comes from compactor-job.env.
+services:
+  spark-compactor:
+    profiles: [compaction]
+    build:
+      context: ../..
+      dockerfile: engines/spark/Dockerfile
+    image: lakehouse-ingest-bench/spark:local
+    environment:
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+    volumes: ["${RUN_DIR:-/nonexistent/run}:/opt/bench/run:ro"]
+    command:
+      - /opt/spark/bin/spark-submit
+      - --master
+      - local[${COMPACTOR_LOCAL_CORES:-2}]
+      - --driver-memory
+      - ${COMPACTOR_DRIVER_MEM_MB:-2048}m
+      - --properties-file
+      - /opt/bench/run/compactor-spark-defaults.conf
+      - /opt/bench/compactors/spark_rewrite/rewrite_loop.py
+    depends_on: [minio-init, iceberg-rest]

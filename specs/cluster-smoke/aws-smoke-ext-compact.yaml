@@ -1,0 +1,37 @@
+# Eon Data Engine's compaction-enabled smoke on the cluster: two readers, two writers and one
+# 4 vCPU / 16 GiB compactor. The full-row snapshot check and terminal exactness qualify it.
+name: aws-smoke-ext-compact
+engine: external
+corpus: smoke
+table:
+  managed_by: harness
+  partition: identity(partition_key)
+  properties:
+    # The engine's compaction target, declared so the scorer reads file sizes against it.
+    write.target-file-size-bytes: "536870912"
+    write.parquet.compression-codec: "zstd"
+    write.parquet.compression-level: "1"
+kafka:
+  partitions: 4
+  key: partition_key
+  partition_assignment: round_robin
+  value_encoding: confluent
+producer:
+  shards: 1
+  compression: lz4
+scoring:
+  # At the smoke's 5 MB/s each writer batch stays open for its full 60 s age limit, then waits
+  # for the 30 s commit and the drain: about 100 s end to end, which the Flink smoke's 60 s bound fails.
+  freshness_bound_s: 180
+  warmup_s: 60
+external:
+  name: Eon Data Engine
+  version: "704c6250"
+  notes: "smoke of the compaction-enabled configuration: bin-pack compaction at the 512 MiB target"
+fleet:
+  - {role: reader, count: 2, vcpu: 3.5, gib: 12, machine_type: m8g.2xlarge}
+  - {role: writer, count: 2, vcpu: 4, gib: 16, machine_type: m8g.2xlarge}
+  - {role: committer, count: 1, vcpu: 2, gib: 6, machine_type: m8g.2xlarge}
+  - {role: compactor, count: 1, vcpu: 4, gib: 16, machine_type: m8g.2xlarge}
+compaction:
+  driver: inline

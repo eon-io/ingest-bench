@@ -1,0 +1,14 @@
+# The kinds preset in the shapes Flink reads from plain Avro: session_id is a
+# 36-character token rather than a uuid, and location is a required struct.
+schema: kinds
+offered_bytes_per_s: 1MB
+duration_s: 120
+partition_count: 16
+alpha: 1.0
+target_row_bytes: 512
+batch_interval_ms: 1000
+corpus_epoch: "2026-01-01T00:00:00Z"
+kafka_key_columns: [partition_key]
+column_overrides:
+  session_id: {kind: categorical, width: 36}
+  location: {null_fraction: 0.0}

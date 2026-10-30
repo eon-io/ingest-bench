@@ -1,0 +1,18 @@
+# Provision gp3 throughput for both offered records and replication traffic.
+# Rendered by deploy/aws/_stack_hooks.sh with envsubst.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ${KAFKA_STORAGE_CLASS}
+  labels:
+    lakehouse-ingest-bench: "true"
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  throughput: "${KAFKA_VOLUME_THROUGHPUT_MIBS}"
+  iops: "${KAFKA_VOLUME_IOPS}"
+  encrypted: "true"
+reclaimPolicy: Delete
+# Bind in the scheduled broker's zone and allow later volume expansion.
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true

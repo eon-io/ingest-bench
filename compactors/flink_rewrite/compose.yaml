@@ -1,0 +1,62 @@
+# The maintenance sidecar's local shape: a Flink cluster of its own on the Flink
+# engine's image, as on Kubernetes, so the ingest job's slots stay the ingest
+# job's. It lives here because it runs beside whichever engine is ingesting,
+# including one this stack does not start.
+#
+# Compose interpolates inactive profiles, so RUN_DIR defaults to a nonexistent
+# path and fails only on submission. Settings and sizing come from the staged
+# compactor files.
+services:
+  flink-compactor-jobmanager:
+    profiles: [compaction]
+    build:
+      context: ../..
+      dockerfile: engines/flink/Dockerfile
+    image: lakehouse-ingest-bench/flink:local
+    command: jobmanager
+    ports: ["8082:8081"]
+    environment:
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: flink-compactor-jobmanager
+        ${COMPACTOR_FLINK_PROPERTIES:-}
+    depends_on: [minio-init, iceberg-rest]
+  flink-compactor-taskmanager:
+    profiles: [compaction]
+    image: lakehouse-ingest-bench/flink:local
+    command: taskmanager
+    environment:
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: flink-compactor-jobmanager
+        ${COMPACTOR_FLINK_PROPERTIES:-}
+    depends_on: [flink-compactor-jobmanager]
+  # Submit once the sidecar's slots are registered; compose.sh handles ordering.
+  flink-compactor-job:
+    profiles: [compaction-job]
+    image: lakehouse-ingest-bench/flink:local
+    volumes: ["${RUN_DIR:-/nonexistent/run}:/opt/bench/run:ro"]
+    environment:
+      - AWS_REGION=us-east-1
+      - |
+        FLINK_PROPERTIES=
+        ${COMPACTOR_FLINK_PROPERTIES:-}
+    command:
+      - "flink"
+      - "run"
+      - "-d"
+      - "-m"
+      - "flink-compactor-jobmanager:8081"
+      - "-p"
+      - "${COMPACTOR_PARALLELISM:-2}"
+      - "-c"
+      - "org.ingestbench.flink.MaintenanceRunner"
+      - "/opt/bench/maintenance-runner.jar"
+      - "--maintenance"
+      - "/opt/bench/run/compactor-job.yaml"

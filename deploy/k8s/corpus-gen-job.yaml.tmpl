@@ -1,0 +1,36 @@
+# One generator pod per shard. The shell entrypoint expands
+# $JOB_COMPLETION_INDEX to select each pod's shard.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: __NAME__
+  namespace: __NAMESPACE__
+  labels:
+    lakehouse-ingest-bench: "true"
+spec:
+  backoffLimit: 0
+  # Retain completed Jobs for one hour so failure logs remain available.
+  ttlSecondsAfterFinished: 3600
+  completionMode: Indexed
+  completions: __COUNT__
+  parallelism: __COUNT__
+  template:
+    metadata:
+      labels:
+        lakehouse-ingest-bench: "true"
+    spec:
+      restartPolicy: Never
+      serviceAccountName: __SERVICE_ACCOUNT__
+      nodeSelector: __NODE_SELECTOR__
+      tolerations: __TOLERATIONS__
+      containers:
+        - name: harness
+          image: __IMAGE__
+          command: __COMMAND__
+          env: __ENV__
+          envFrom: __ENV_FROM__
+          # Size memory for batch bytes; override through GEN_MEMORY.
+          resources:
+            requests:
+              cpu: "1"
+              memory: __MEMORY__

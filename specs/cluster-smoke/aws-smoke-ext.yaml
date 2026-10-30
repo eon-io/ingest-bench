@@ -1,0 +1,26 @@
+name: aws-smoke-ext
+engine: external
+corpus: smoke
+table:
+  managed_by: harness
+  partition: identity(partition_key)
+kafka:
+  partitions: 4
+  key: partition_key
+  partition_assignment: round_robin
+  value_encoding: confluent
+producer:
+  shards: 1
+  compression: lz4
+scoring:
+  freshness_bound_s: 60
+  warmup_s: 60
+external:
+  name: Eon Data Engine
+  version: "a9dccd19"
+  notes: "smoke of the ingest-only configuration with compaction parked"
+fleet:
+  - {role: reader, count: 2, vcpu: 3.5, gib: 12, machine_type: m8g.2xlarge}
+  - {role: writer, count: 2, vcpu: 4, gib: 16, machine_type: m8g.2xlarge}
+  - {role: committer, count: 1, vcpu: 2, gib: 6, machine_type: m8g.2xlarge}
+  - {role: compactor, count: 1, vcpu: 1, gib: 3, machine_type: m8g.2xlarge}

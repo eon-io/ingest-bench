@@ -1,0 +1,138 @@
+# Local integration stack: Kafka, MinIO, Iceberg REST, schema registry, and harness.
+#
+# Profiles:
+#   (none)      Kafka, storage, catalog, and registry
+#   flink       engine fleet, scaled with --scale flink-taskmanager=N
+#   flink-job   one-shot submitter; requires RUN_DIR
+#   spark       local Spark driver; requires RUN_DIR
+#   compaction  the rewrite sidecar beside any engine; requires RUN_DIR
+#   upsert-scan the Spark reader that dumps an upsert table's live rows, for any engine; requires SCAN_DIR
+#   tools       harness commands via docker compose run --rm harness "<cmd>"
+#
+# Use local runs for correctness checks; do not treat local throughput as a
+# capacity result.
+#
+# Compose interpolates all profiles before filtering, so engine files give
+# RUN_DIR a nonexistent default. Only submissions that mount it require a value.
+name: ingest-bench
+
+# Included-file paths are relative to that file, so ../.. remains the repo root.
+include:
+  - path: ../../../engines/flink/compose.yaml
+  - path: ../../../engines/spark/compose.yaml
+  - path: ../../../compactors/spark_rewrite/compose.yaml
+  - path: ../../../compactors/flink_rewrite/compose.yaml
+
+services:
+  kafka:
+    image: apache/kafka:3.9.0
+    # Containers use kafka:9092; host clients must use localhost:29092.
+    # Port 9092 advertises an address only the Compose network can resolve.
+    ports: ["9092:9092", "29092:29092"]
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+      KAFKA_NUM_PARTITIONS: 4
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    # Probe the Kafka API; an open socket does not mean metadata is ready.
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: server /data --console-address ":9001"
+    ports: ["9000:9000", "9001:9001"]
+    # Shared local fixture credentials, not production secrets.
+    environment: {MINIO_ROOT_USER: admin, MINIO_ROOT_PASSWORD: password}
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+  # Create buckets before the catalog starts.
+  minio-init:
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    depends_on:
+      minio: {condition: service_healthy}
+    entrypoint: ["/bin/sh", "/init.sh"]
+    volumes: ["./minio-init.sh:/init.sh:ro"]
+  iceberg-rest:
+    image: apache/iceberg-rest-fixture:1.9.2
+    ports: ["8181:8181"]
+    # CATALOG_* strips the prefix, maps _ to . and __ to -.
+    # S3FileIO reads credentials from the standard AWS environment variables.
+    environment:
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: admin
+      AWS_SECRET_ACCESS_KEY: password
+      # Use file-backed SQLite because the default in-memory database disappears
+      # when the JDBC pool closes its last connection.
+      CATALOG_URI: jdbc:sqlite:file:/tmp/iceberg_rest.db
+      CATALOG_WAREHOUSE: s3://warehouse/
+      CATALOG_IO__IMPL: org.apache.iceberg.aws.s3.S3FileIO
+      CATALOG_S3_ENDPOINT: http://minio:9000
+      CATALOG_S3_PATH__STYLE__ACCESS: "true"
+    depends_on:
+      minio-init: {condition: service_completed_successfully}
+  # Upsert verification reads every engine's table with one Spark reader. SCAN_DIR holds
+  # spark-scan.conf; the command (spark-submit ... upsert_scan.py ...) is given per run.
+  upsert-scan:
+    profiles: [upsert-scan]
+    build:
+      context: ../../..
+      dockerfile: engines/spark/Dockerfile
+    image: lakehouse-ingest-bench/spark:local
+    environment:
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+    volumes: ["${SCAN_DIR:-/nonexistent/scan}:/opt/bench/scan:ro"]
+    depends_on:
+      minio-init: {condition: service_completed_successfully}
+  # Apicurio serves the Confluent API at /apis/ccompat/v7 with in-memory storage.
+  # Start it before staging, even when no engine profile is active. Its port
+  # is internal to Compose to avoid host conflicts; inspect it with:
+  #   docker compose exec schema-registry curl localhost:8080/...
+  schema-registry:
+    image: quay.io/apicurio/apicurio-registry:3.0.15
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health/ready >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+  # One container per command. The shell entrypoint parses the quoted argument:
+  #   docker compose run --rm harness "gen-corpus --preset smoke --out s3://corpus"
+  harness:
+    profiles: [tools]
+    build:
+      context: ../../..
+      dockerfile: Dockerfile
+      args: {HARNESS_COMMIT: "${HARNESS_COMMIT:-}"}
+    image: lakehouse-ingest-bench/harness:local
+    environment:
+      AWS_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: admin
+      AWS_SECRET_ACCESS_KEY: password
+      AWS_REGION: us-east-1
+      INGEST_BENCH_WORKLOADS: /app/workloads
+    volumes:
+      - ./site.yaml:/site.yaml:ro
+      - ./catalog.props:/catalog.props:ro
+      - ../../../runs:/runs
+    # Wait for healthy APIs before staging creates a table or registers a schema.
+    depends_on:
+      kafka: {condition: service_healthy}
+      iceberg-rest: {condition: service_healthy}
+      schema-registry: {condition: service_healthy}

@@ -1,0 +1,28 @@
+# Reference tier: REFERENCE_KNOBS plus sizing only, upsert sink on a v3 table whose equality deletes
+# the job converts into deletion vectors. The smallest fleet that passed the hour.
+name: aws-50mbs-upsert-orders-flink-ref
+engine: flink
+track: events-50mbs-upsert-orders
+table:
+  format_version: 3
+  properties:
+    write.parquet.compression-codec: zstd
+    write.parquet.compression-level: "1"
+producer:
+  shards: 4
+flink:
+  machine_type: m8g.4xlarge
+  taskmanagers: 3
+  slots: 4
+  tm_cpu: 4
+  tm_mem_mb: 12288
+  jm_cpu: 1
+  jm_mem_mb: 4096
+  # 48 partitions divide evenly across 12 readers, one per slot.
+  source_parallelism: 12
+  # Key groups decide which slot writes the current hour's partition, about 91% of the rows. 64 is the
+  # value every 50 MB/s Flink probe ran with.
+  max_parallelism: 64
+  checkpoint_interval: 60s
+  min_pause: 2s
+  distribution_mode: hash

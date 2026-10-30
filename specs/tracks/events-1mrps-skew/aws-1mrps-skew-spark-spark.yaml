@@ -1,0 +1,82 @@
+# Tuned tier: Spark Structured Streaming ingest with the harness's Spark rewrite sidecar, sized for p95 freshness
+# under 80 s. Ingest is the published-hour fleet (19 x 7 at a 40 s trigger). The 40-minute skew probe measured the
+# sidecar at 25-26 MB/s per executor and 265 GB per 600 s pass, so 19 x 7 executors finish a pass in about 530 s.
+name: aws-1mrps-skew-spark-spark
+engine: spark
+track: events-1mrps-skew
+producer:
+  shards: 69
+scoring:
+  gate_adaptation_s: 300
+spark:
+  machine_type: c8gn.4xlarge
+  driver_machine_type: m8g.2xlarge
+  executors: 19
+  executor_cores: 7
+  executor_mem_mb: 8192
+  driver_cores: 2
+  driver_mem_mb: 4096
+  trigger_interval: "40 seconds"
+  distribution_mode: hash
+  # 1.5 x one trigger of offer (1 M rows/s x 60 s), bounding the first batch and catch-up batches.
+  max_offsets_per_trigger: 60000000
+  source_options:
+    # Spark splits each of the 192 partitions in 3: 576 map tasks.
+    minPartitions: "532"
+    kafka.max.poll.records: "20000"
+    kafka.max.partition.fetch.bytes: "8388608"
+    kafka.fetch.max.bytes: "67108864"
+    kafka.receive.buffer.bytes: "1048576"
+  extra_spark_conf:
+    # Two 7-core executors fill a 16-vCPU node, so the driver needs a node group of its own.
+    # These are EKS node group names; replace them with your cluster's.
+    spark.kubernetes.driver.node.selector.eks.amazonaws.com/nodegroup: "shared"
+    spark.kubernetes.executor.node.selector.eks.amazonaws.com/nodegroup: "spark"
+    # 2000 hash buckets keep cold keys out of hot keys' buckets, and AQE splits a hot key into ~64 MiB write tasks.
+    spark.sql.shuffle.partitions: "2000"
+    spark.sql.iceberg.advisory-partition-size: "67108864"
+    spark.sql.adaptive.coalescePartitions.parallelismFirst: "false"
+    # Shuffle files are freed only when the driver GCs a batch's shuffle (default every 30 min).
+    spark.cleaner.periodicGC.interval: "2min"
+    # Keep about one batch of finished source tasks' cached polls, not 5 minutes of them.
+    spark.kafka.consumer.fetchedData.cache.timeout: "30s"
+    spark.kafka.consumer.fetchedData.cache.evictorThreadRunInterval: "10s"
+    spark.kafka.consumer.cache.capacity: "128"
+    spark.executor.memoryOverhead: "3g"
+    spark.driver.memoryOverhead: "1g"
+table:
+  properties:
+    write.parquet.compression-codec: zstd
+    write.parquet.compression-level: "1"
+    write.target-file-size-bytes: "536870912"
+compaction:
+  driver: spark-rewrite
+  interval_s: 600
+  spark-rewrite:
+    machine_type: m8g.4xlarge
+    driver_machine_type: m8g.2xlarge
+    executors: 19
+    executor_cores: 7
+    # 14 GiB heap + 2 GiB overhead = 16 GiB pods, two per m8g.4xlarge.
+    executor_mem_mb: 14336
+    driver_cores: 2
+    driver_mem_mb: 4096
+    rewrite_options:
+      min-input-files: "8"
+      min-file-size-bytes: "268435456"
+      max-file-group-size-bytes: "2147483648"
+      # One output file is one task, so concurrent groups must cover every slot (default 5).
+      max-concurrent-file-group-rewrites: "133"
+      partial-progress.enabled: "true"
+      partial-progress.max-commits: "6"
+      partial-progress.max-failed-commits: "0"
+      rewrite-job-order: "bytes-desc"
+      use-starting-sequence-number: "true"
+    extra_spark_conf:
+      # EKS node group names; replace them with your cluster's.
+      spark.kubernetes.driver.node.selector.eks.amazonaws.com/nodegroup: "shared"
+      spark.kubernetes.executor.node.selector.eks.amazonaws.com/nodegroup: "sidecar"
+      spark.executor.memoryOverhead: "2g"
+      spark.driver.memoryOverhead: "1g"
+      spark.dynamicAllocation.enabled: "false"
+      spark.speculation: "false"

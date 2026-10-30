@@ -1,0 +1,37 @@
+# Smoke-sized EKS cluster with private amd64 nodes and the Pod Identity agent.
+# eksctl creates a three-zone VPC with one NAT gateway. setup.sh adds an S3
+# gateway endpoint so same-region bucket traffic bypasses NAT processing charges.
+# Use the same YOUR_ZONE (e.g. us-east-2a) for all benchmark node groups to avoid
+# cross-AZ charges. The control plane still spans the VPC's zones.
+#
+#   eksctl create cluster -f eksctl-cluster.example.yaml     # ~20 minutes
+#   eksctl delete cluster -f eksctl-cluster.example.yaml
+#
+# Run these commands yourself; the harness does not manage the EKS cluster.
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: YOUR_CLUSTER_NAME
+  region: YOUR_REGION
+  tags:
+    lakehouse-ingest-bench: "true"
+addons:
+  - name: vpc-cni
+  - name: coredns
+  - name: kube-proxy
+  - name: eks-pod-identity-agent
+managedNodeGroups:
+  - name: amd64
+    # Each 4-vCPU / 16-GiB node fits one 2-CPU pod. Four nodes support smoke
+    # runs: two workers, a scorer, and a producer, with room for the 1-CPU
+    # coordinator. See README.md for larger-run sizing.
+    instanceType: m6i.xlarge
+    amiFamily: AmazonLinux2023
+    desiredCapacity: 4
+    minSize: 4
+    maxSize: 4
+    volumeSize: 80
+    privateNetworking: true
+    availabilityZones: [YOUR_ZONE]
+    tags:
+      lakehouse-ingest-bench: "true"

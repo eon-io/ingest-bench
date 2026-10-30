@@ -1,0 +1,44 @@
+# One producer pod per shard, selected by $JOB_COMPLETION_INDEX. All shards
+# share the corpus, topic, and epoch. Upload each local publish log as the
+# run proceeds so the scorer can read it from another pod.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: __NAME__
+  namespace: __NAMESPACE__
+  labels:
+    lakehouse-ingest-bench: "true"
+spec:
+  backoffLimit: 0
+  completionMode: Indexed
+  completions: __COUNT__
+  parallelism: __COUNT__
+  template:
+    metadata:
+      labels:
+        lakehouse-ingest-bench: "true"
+    spec:
+      restartPolicy: Never
+      serviceAccountName: __SERVICE_ACCOUNT__
+      nodeSelector: __NODE_SELECTOR__
+      tolerations: __TOLERATIONS__
+      containers:
+        - name: harness
+          image: __IMAGE__
+          command: __COMMAND__
+          env: __ENV__
+          envFrom: __ENV_FROM__
+          # PRODUCER_MEMORY covers batch data. PRODUCER_CPU defaults to two cores
+          # for Python encoding/pacing and librdkafka compression/sending. The
+          # request only places the shard; CPU stays
+          # unlimited so brief bursts can use idle capacity without falling behind.
+          resources:
+            requests:
+              cpu: "__CPU__"
+              memory: __MEMORY__
+          volumeMounts:
+            - name: work
+              mountPath: /work
+      volumes:
+        - name: work
+          emptyDir: {}

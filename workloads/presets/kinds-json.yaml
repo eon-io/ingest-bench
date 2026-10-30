@@ -1,0 +1,12 @@
+# Type coverage in JSON: every column kind, with nullable and nested columns.
+schema: kinds
+value_encoding: json
+offered_bytes_per_s: 1MB
+duration_s: 120
+partition_count: 16
+alpha: 1.0
+target_row_bytes: 1024
+batch_interval_ms: 1000
+corpus_epoch: "2026-01-01T00:00:00Z"
+kafka_key_columns: [partition_key]
+column_overrides: {}

@@ -1,0 +1,41 @@
+# Tuned tier: Flink ingest only, Iceberg v1 sink. Smallest fleet that kept up in a 20-minute probe: 18 TaskManagers x
+# 14 vCPU. 28 x 13 vCPU fell behind: with hash distribution the busiest writer holds 5 of the 512 keys and saturated.
+name: aws-1mrps-unif-flink
+engine: flink
+track: events-1mrps-uniform
+producer:
+  shards: 69
+scoring:
+  gate_adaptation_s: 300
+flink:
+  machine_type: m8g.4xlarge
+  jm_machine_type: m8g.2xlarge
+  taskmanagers: 18
+  # 612 writer subtasks: the busiest holds 4 keys at default max parallelism. 14-vCPU TaskManagers average out
+  # the per-TaskManager key count.
+  slots: 34
+  tm_cpu: 14
+  tm_mem_mb: 36864
+  jm_cpu: 1
+  jm_mem_mb: 4096
+  checkpoint_interval: 60s
+  min_pause: 2s
+  source_parallelism: 96
+  distribution_mode: hash
+  extra_flink_conf:
+    table.exec.iceberg.use-v2-sink: "false"
+    taskmanager.memory.jvm-overhead.min: "2g"
+    taskmanager.memory.jvm-overhead.max: "2g"
+    taskmanager.memory.managed.size: "0m"
+    # About 6,500 shuffle channels per TaskManager at 34 slots.
+    taskmanager.memory.network.min: "1g"
+    taskmanager.memory.network.max: "1g"
+    # The direct-memory limit is framework off-heap plus network memory. Without its own allowance, the Kafka
+    # fetchers' temporary direct buffers ran out of it before any data.
+    taskmanager.memory.task.off-heap.size: "2g"
+    taskmanager.load-balance.mode: "TASKS"
+    # EKS node group names; replace them with your cluster's.
+    kubernetes.taskmanager.node-selector: "eks.amazonaws.com/nodegroup:engine"
+    kubernetes.jobmanager.node-selector: "eks.amazonaws.com/nodegroup:shared"
+table:
+  properties: {write.parquet.compression-codec: zstd, write.parquet.compression-level: "1", write.target-file-size-bytes: "536870912"}

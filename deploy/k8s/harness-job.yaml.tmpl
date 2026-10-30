@@ -1,0 +1,37 @@
+# Run one harness command inside the cluster's network.
+# Rendered by ingest_bench/k8s/render.py, which rejects unfilled markers.
+# The image's /bin/sh -c entrypoint parses the single command argument.
+# See deploy/aws/README.md for template conventions.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: __NAME__
+  namespace: __NAMESPACE__
+  labels:
+    lakehouse-ingest-bench: "true"
+spec:
+  # Do not retry automatically: failed commands may already have created
+  # topics, published records, or written artifacts.
+  backoffLimit: 0
+  # Retain completed Jobs for one hour so failure logs remain available.
+  ttlSecondsAfterFinished: 3600
+  completions: 1
+  template:
+    metadata:
+      labels:
+        lakehouse-ingest-bench: "true"
+    spec:
+      restartPolicy: Never
+      serviceAccountName: __SERVICE_ACCOUNT__
+      nodeSelector: __NODE_SELECTOR__
+      tolerations: __TOLERATIONS__
+      containers:
+        - name: harness
+          image: __IMAGE__
+          command: __COMMAND__
+          env: __ENV__
+          envFrom: __ENV_FROM__
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"

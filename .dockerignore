@@ -1,0 +1,10 @@
+.venv
+.git
+runs
+tests
+docs
+# Exclude tool caches to keep the Docker build context small.
+.mypy_cache
+.pytest_cache
+.ruff_cache
+engines/flink/sql-runner/target
