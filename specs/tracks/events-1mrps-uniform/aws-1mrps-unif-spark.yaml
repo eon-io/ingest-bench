@@ -1,0 +1,52 @@
+# Tuned tier: Spark Structured Streaming ingest only, sized for p95 freshness under 80 s. Freshness tracks
+# trigger + batch, so the trigger is 40 s. A 40-minute skew probe on 19 x 7 held 40M-row batches at 36.2-36.6 s
+# (1.09x the offer) with p95 74 s, the smallest fleet the batch model allowed. Uniform runs the skew shape, as its
+# published fleet and batches matched skew.
+name: aws-1mrps-unif-spark
+engine: spark
+track: events-1mrps-uniform
+producer:
+  shards: 69
+scoring:
+  gate_adaptation_s: 300
+spark:
+  machine_type: c8gn.4xlarge
+  driver_machine_type: m8g.2xlarge
+  executors: 19
+  executor_cores: 7
+  executor_mem_mb: 8192
+  driver_cores: 2
+  driver_mem_mb: 4096
+  trigger_interval: "40 seconds"
+  distribution_mode: hash
+  # 1.5 x one trigger of offer (1 M rows/s x 40 s), bounding the first batch and catch-up batches.
+  max_offsets_per_trigger: 60000000
+  source_options:
+    # Four full waves of map tasks on 133 executor cores.
+    minPartitions: "532"
+    kafka.max.poll.records: "20000"
+    kafka.max.partition.fetch.bytes: "8388608"
+    kafka.fetch.max.bytes: "67108864"
+    kafka.receive.buffer.bytes: "1048576"
+  extra_spark_conf:
+    # Two 7-core executors fill a 16-vCPU node, so the driver needs a node group of its own.
+    # These are EKS node group names; replace them with your cluster's.
+    spark.kubernetes.driver.node.selector.eks.amazonaws.com/nodegroup: "shared"
+    spark.kubernetes.executor.node.selector.eks.amazonaws.com/nodegroup: "spark"
+    # 2000 hash buckets keep cold keys out of hot keys' buckets, and AQE splits a hot key into ~64 MiB write tasks.
+    spark.sql.shuffle.partitions: "2000"
+    spark.sql.iceberg.advisory-partition-size: "67108864"
+    spark.sql.adaptive.coalescePartitions.parallelismFirst: "false"
+    # Shuffle files are freed only when the driver GCs a batch's shuffle (default every 30 min).
+    spark.cleaner.periodicGC.interval: "2min"
+    # Keep about one batch of finished source tasks' cached polls, not 5 minutes of them.
+    spark.kafka.consumer.fetchedData.cache.timeout: "30s"
+    spark.kafka.consumer.fetchedData.cache.evictorThreadRunInterval: "10s"
+    spark.kafka.consumer.cache.capacity: "128"
+    spark.executor.memoryOverhead: "3g"
+    spark.driver.memoryOverhead: "1g"
+table:
+  properties:
+    write.parquet.compression-codec: zstd
+    write.parquet.compression-level: "1"
+    write.target-file-size-bytes: "536870912"

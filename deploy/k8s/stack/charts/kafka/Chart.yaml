@@ -1,0 +1,6 @@
+apiVersion: v2
+name: ingest-bench-kafka
+description: The benchmark's Apache Kafka cluster, as the Strimzi resources that describe it
+type: application
+version: 0.1.0
+appVersion: "4.3.1"

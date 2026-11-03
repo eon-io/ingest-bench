@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+# Ignore only the root site config; keep the local Compose fixture tracked.
+/site.yaml
+# Local run artifacts. Run specs live under specs/.
+/runs/
+dist/
+/engines/flink/sql-runner/target/

@@ -1,0 +1,20 @@
+name: smoke-external
+engine: external
+corpus: smoke
+table:
+  managed_by: harness
+  partition: identity(partition_key)
+kafka:
+  partitions: 4
+  key: partition_key
+  partition_assignment: key
+scoring:
+  freshness_bound_s: 60
+  warmup_s: 60
+external:
+  name: your-engine
+  version: "0.0"
+  notes: "replace with the engine you are scoring"
+fleet:
+  # Replace the example engine's fleet with the resources your engine uses.
+  - {role: worker, count: 2, vcpu: 2, gib: 2, machine_type: laptop}

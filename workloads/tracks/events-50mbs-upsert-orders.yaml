@@ -1,0 +1,20 @@
+# One hour of a food-delivery orders table at a record-day dinner peak; each engine loads the
+# last 4 hours' orders from Kafka first. Live state is verified at the pinned sample offsets and
+# the final snapshot.
+corpus: events-50mbs-upsert-orders
+kafka:
+  partitions: 48
+  key: event_id
+  partition_assignment: corpus
+  value_encoding: confluent
+producer:
+  compression: lz4
+  behind_max_ms: 10000
+scoring:
+  freshness_bound_s: 90
+  freshness_max_bound_s: 120
+  exactness: LATEST_PER_KEY
+  max_warmup_s: 300
+  geometry_offsets_s: [613, 1427, 2251, 3089]
+table:
+  partition: identity(partition_key)

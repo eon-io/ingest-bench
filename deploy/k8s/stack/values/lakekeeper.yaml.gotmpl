@@ -1,0 +1,54 @@
+# Lakekeeper with bundled Postgres. Use the chart's unauthenticated, allowall
+# defaults; services are exposed only inside the cluster.
+serviceAccount:
+  create: true
+  # Keep the name stable for its namespace/service-account Pod Identity binding.
+  name: ingest-bench-catalog
+
+# Create migrations as ordinary resources so they can run during Helm's wait.
+# A post-install hook would wait for a catalog that cannot start without it.
+helmWait: true
+
+catalog:
+  replicas: 1
+  # Read cloud-specific settings from the hook.
+  config: {{ requiredEnv "STACK_CATALOG_CONFIG_JSON" }}
+  extraEnv: {{ requiredEnv "STACK_CATALOG_ENV_JSON" }}
+  nodeSelector: {{ requiredEnv "CATALOG_NODE_SELECTOR" }}
+  tolerations: {{ requiredEnv "CATALOG_TOLERATIONS" }}
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+  dbMigrations:
+    # Remove completed migration Jobs after ten minutes.
+    ttlSecondsAfterFinished: 600
+
+# Reuse setup.sh's encryption key so previously stored secrets remain readable.
+secretBackend:
+  type: Postgres
+  postgres:
+    encryptionKeySecret: {{ requiredEnv "CATALOG_SECRET" }}
+    encryptionKeySecretKey: encryptionKey
+
+postgresql:
+  enabled: true
+  settings:
+    existingSecret: {{ requiredEnv "CATALOG_SECRET" }}
+    superuser:
+      secretKey: postgresUser
+    superuserPassword:
+      secretKey: postgresPassword
+  userDatabase:
+    existingSecret: {{ requiredEnv "CATALOG_SECRET" }}
+    name:
+      secretKey: pgDatabase
+    user:
+      secretKey: pgUser
+    password:
+      secretKey: pgPassword
+  storage:
+    requestedSize: 10Gi
+    className: {{ requiredEnv "CATALOG_STORAGE_CLASS" }}
+  nodeSelector: {{ requiredEnv "CATALOG_NODE_SELECTOR" }}
+  tolerations: {{ requiredEnv "CATALOG_TOLERATIONS" }}

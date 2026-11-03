@@ -1,0 +1,31 @@
+# External AWS smoke with Confluent framing. Staging registers the corpus schema; each
+# value carries its ID in a five-byte header. See docs/adding-an-engine.md for decoding
+# options.
+# Set kafka.schema_registry in the site. Use a hosted registry or deploy one with
+# WITH_SCHEMA_REGISTRY=true deploy/aws/setup.sh.
+# Replace fleet with the actual resources and machine types. Fill in external with the
+# engine name, version and tuning notes.
+name: aws-smoke-external-confluent
+engine: external
+corpus: smoke
+table:
+  managed_by: harness
+  partition: identity(partition_key)
+kafka:
+  partitions: 4
+  key: partition_key
+  partition_assignment: key
+  value_encoding: confluent
+producer:
+  shards: 1
+  compression: lz4
+scoring:
+  freshness_bound_s: 60
+  warmup_s: 60
+external:
+  name: your-engine
+  version: "0.0"
+  notes: "replace with the engine you are scoring"
+fleet:
+  - {role: coordinator, count: 1, vcpu: 1, gib: 2, machine_type: YOUR_MACHINE_TYPE}
+  - {role: worker, count: 2, vcpu: 2, gib: 4, machine_type: YOUR_MACHINE_TYPE}

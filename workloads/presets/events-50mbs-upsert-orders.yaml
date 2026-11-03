@@ -1,0 +1,28 @@
+# One hour of a food-delivery orders table at a record-day dinner peak: 50 MB/s of 1 KB order
+# changes over the last 4 hours' 20M orders, which the engine loads from Kafka before the hour.
+# The table is partitioned by the hour each order was created. See docs/corpus.md#upsert-corpora.
+schema: events
+offered_bytes_per_s: 50MB
+duration_s: 3600
+# Four hours of seed history plus the stream, in hours.
+partition_count: 5
+alpha: 0.0
+target_row_bytes: 1024
+batch_interval_ms: 1000
+corpus_epoch: "2026-01-01T00:00:00Z"
+kafka_key_columns: [event_id, partition_key]
+column_overrides: {}
+upsert:
+  key_column: event_id
+  key_layout: time_ordered
+  partition_layout: creation_hour
+  kafka_partitions: 48
+  seed_keys: 20000000
+  seed_delivery: kafka
+  seed_history_s: 14400
+  new_key_fraction: 0.10
+  updates:
+    # The delivery itself: placed, accepted, prepared, picked up, delivered, within 45 minutes.
+    - {share: 0.95, target: recent, age: {distribution: exponential, mean_s: 300, max_s: 2700}}
+    # Tips, ratings and adjustments, within an hour of the order.
+    - {share: 0.05, target: recent, age: {distribution: exponential, mean_s: 1800, max_s: 3600}}

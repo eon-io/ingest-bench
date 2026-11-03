@@ -1,0 +1,83 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListTheBenchmarkBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket"
+      ],
+      "Resource": "arn:aws:s3:::${BUCKET}"
+    },
+    {
+      "Sid": "ReadAndWriteTheThreePrefixes",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:AbortMultipartUpload",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::${BUCKET}/corpus/*",
+        "arn:aws:s3:::${BUCKET}/runs/*",
+        "arn:aws:s3:::${BUCKET}/warehouse/*"
+      ]
+    },
+    {
+      "Sid": "GlueIcebergCatalog",
+      "Effect": "Allow",
+      "Action": [
+        "glue:GetCatalog",
+        "glue:CreateDatabase",
+        "glue:GetDatabase",
+        "glue:GetDatabases",
+        "glue:CreateTable",
+        "glue:GetTable",
+        "glue:GetTables",
+        "glue:UpdateTable",
+        "glue:DeleteTable"
+      ],
+      "Resource": [
+        "arn:aws:glue:${REGION}:${ACCOUNT}:catalog",
+        "arn:aws:glue:${REGION}:${ACCOUNT}:database/ingest_bench",
+        "arn:aws:glue:${REGION}:${ACCOUNT}:table/ingest_bench/*"
+      ]
+    },
+    {
+      "Sid": "MskCluster",
+      "Effect": "Allow",
+      "Action": [
+        "kafka-cluster:Connect",
+        "kafka-cluster:DescribeCluster",
+        "kafka-cluster:DescribeClusterDynamicConfiguration",
+        "kafka-cluster:WriteDataIdempotently"
+      ],
+      "Resource": "${MSK_ARN}"
+    },
+    {
+      "Sid": "MskTopics",
+      "Effect": "Allow",
+      "Action": [
+        "kafka-cluster:CreateTopic",
+        "kafka-cluster:DeleteTopic",
+        "kafka-cluster:DescribeTopic",
+        "kafka-cluster:DescribeTopicDynamicConfiguration",
+        "kafka-cluster:AlterTopic",
+        "kafka-cluster:AlterTopicDynamicConfiguration",
+        "kafka-cluster:WriteData",
+        "kafka-cluster:ReadData"
+      ],
+      "Resource": "${MSK_TOPIC_ARN}"
+    },
+    {
+      "Sid": "MskGroups",
+      "Effect": "Allow",
+      "Action": [
+        "kafka-cluster:DescribeGroup",
+        "kafka-cluster:AlterGroup"
+      ],
+      "Resource": "${MSK_GROUP_ARN}"
+    }
+  ]
+}

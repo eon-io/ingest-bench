@@ -1,0 +1,54 @@
+{
+  "name": "kinds",
+  "description": "Type coverage: every column kind, nullable columns, and structs, lists and maps nested inside each other.",
+  "columns": [
+    {"name": "event_time",   "kind": "timestamp",   "role": "event_time", "cardinality": 0},
+    {"name": "event_id",     "kind": "categorical", "role": "entity", "width": 32},
+    {"name": "amount_micros","kind": "integer", "role": "sum_measure", "cardinality": 1000, "alpha": 0.6, "minimum": 0, "maximum": 5000000},
+    {"name": "event_date",   "kind": "date", "cardinality": 365, "minimum": 20089, "maximum": 20453},
+    {"name": "quantity",     "kind": "int32", "cardinality": 100, "alpha": 1.0, "minimum": 1, "maximum": 100},
+    {"name": "rating",       "kind": "float32", "minimum": 0, "maximum": 5, "null_fraction": 0.2},
+    {"name": "price",        "kind": "exact_decimal", "precision": 10, "scale": 2, "cardinality": 5000, "alpha": 0.5,
+     "minimum": 0.01, "maximum": 9999.99},
+    {"name": "balance",      "kind": "exact_decimal", "precision": 38, "scale": 6, "minimum": -1e15, "maximum": 1e15,
+     "null_fraction": 0.1},
+    {"name": "session_id",   "kind": "uuid"},
+    {"name": "referrer",     "kind": "categorical", "cardinality": 6, "alpha": 1.0, "null_fraction": 0.3,
+     "vocabulary": ["search", "social", "email", "direct", "partner", "ads"]},
+    {"name": "device",       "kind": "struct", "fields": [
+      {"name": "os",           "kind": "categorical", "cardinality": 4, "vocabulary": ["android", "ios", "windows", "macos"]},
+      {"name": "screen_width", "kind": "int32", "cardinality": 6, "minimum": 320, "maximum": 3840},
+      {"name": "model",        "kind": "categorical", "cardinality": 100, "alpha": 0.8, "vocabulary": ["m"], "null_fraction": 0.25},
+      {"name": "fingerprint",  "kind": "blob", "width": 8},
+      {"name": "settings",     "kind": "struct", "null_fraction": 0.2, "fields": [
+        {"name": "theme",  "kind": "categorical", "cardinality": 3, "vocabulary": ["light", "dark", "auto"],
+         "null_fraction": 0.3},
+        {"name": "volume", "kind": "int32", "cardinality": 11, "minimum": 0, "maximum": 100, "null_fraction": 0.1}
+      ]}
+    ]},
+    {"name": "location",     "kind": "struct", "null_fraction": 0.1, "fields": [
+      {"name": "latitude",  "kind": "float32", "minimum": -90, "maximum": 90},
+      {"name": "longitude", "kind": "decimal", "minimum": -180, "maximum": 180}
+    ]},
+    {"name": "tags",         "kind": "list", "minimum": 0, "maximum": 4,
+     "element": {"kind": "categorical", "cardinality": 20, "alpha": 1.0, "vocabulary": ["tag"]}},
+    {"name": "line_items",   "kind": "list", "minimum": 1, "maximum": 3, "null_fraction": 0.2,
+     "element": {"kind": "struct", "fields": [
+       {"name": "sku",        "kind": "categorical", "cardinality": 1000, "alpha": 1.0, "vocabulary": ["sku"]},
+       {"name": "unit_price", "kind": "exact_decimal", "precision": 8, "scale": 2, "minimum": 0.5, "maximum": 500},
+       {"name": "shipped",    "kind": "date", "minimum": 20089, "maximum": 20453, "null_fraction": 0.3},
+       {"name": "gift",       "kind": "boolean", "cardinality": 2, "alpha": 1.0}
+     ]}},
+    {"name": "attributes",   "kind": "map", "minimum": 0, "maximum": 3,
+     "key":   {"kind": "categorical", "cardinality": 8, "alpha": 0.8,
+               "vocabulary": ["color", "size", "brand", "material", "style", "season", "origin", "fit"]},
+     "value": {"kind": "integer", "minimum": 0, "maximum": 1000000, "null_fraction": 0.2}},
+    {"name": "scores",       "kind": "map", "minimum": 1, "maximum": 2,
+     "key":   {"kind": "categorical", "cardinality": 3, "vocabulary": ["quality", "speed", "value"]},
+     "value": {"kind": "list", "minimum": 0, "maximum": 3,
+               "element": {"kind": "float32", "minimum": 0, "maximum": 1, "null_fraction": 0.1}}},
+    {"name": "is_visible",   "kind": "boolean", "cardinality": 2, "alpha": 1.0, "null_fraction": 0.05},
+    {"name": "digest",       "kind": "blob", "width": 16, "null_fraction": 0.1},
+    {"name": "payload",      "kind": "blob", "role": "payload", "cardinality": 0}
+  ]
+}

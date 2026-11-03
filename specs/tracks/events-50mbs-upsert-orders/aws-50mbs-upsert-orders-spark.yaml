@@ -1,0 +1,38 @@
+# Tuned tier: guarded MERGE on the upsert track's reference table, with a 50 s trigger and options that
+# spread the MERGE's join across executors. Full-hour runs that did not meet the track's 90 s p95 bound:
+# - 4 x 4 at 60 s (reference): p95 94 s.
+# - 4 x 4 at 50 s: p95 100 s, max 182 s.
+# 5 x 4 at 50 s without the options measured p95 88 s, with end-of-hour batches at 46-49.6 s: one task of a
+# 20-task join stage ran the whole stage, and two executors stayed nearly idle. With the options, p95 81 s,
+# max 93 s and end batches 40-43 s.
+name: aws-50mbs-upsert-orders-spark
+engine: spark
+track: events-50mbs-upsert-orders
+table:
+  format_version: 3
+  properties:
+    write.merge.mode: merge-on-read
+    write.update.mode: merge-on-read
+    write.delete.mode: merge-on-read
+    write.parquet.compression-codec: zstd
+    write.parquet.compression-level: "1"
+producer:
+  shards: 4
+spark:
+  machine_type: m8g.4xlarge
+  executors: 5
+  executor_cores: 4
+  executor_mem_mb: 12288
+  executor_overhead_mb: 3072
+  driver_cores: 2
+  driver_mem_mb: 4096
+  trigger_interval: "50 seconds"
+  distribution_mode: hash
+  extra_spark_conf:
+    # Do not hold tasks for a preferred executor: without this, two of five executors idled.
+    spark.locality.wait: "0s"
+    # Twice the 20 cores the harness defaults to, so a hot key range splits across more tasks.
+    spark.sql.shuffle.partitions: "40"
+    # AQE splits a join partition over 64 MiB that is twice the median (defaults: 256 MiB and five times).
+    spark.sql.adaptive.skewJoin.skewedPartitionThresholdInBytes: "67108864"
+    spark.sql.adaptive.skewJoin.skewedPartitionFactor: "2"

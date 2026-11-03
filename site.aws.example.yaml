@@ -1,0 +1,44 @@
+# AWS site using S3, MSK IAM authentication, Glue REST and EKS. Copy to site.yaml and
+# replace every YOUR_ placeholder. deploy/aws/setup.sh prints the infrastructure values
+# when it finishes.
+corpus_root: s3://YOUR_BUCKET/corpus
+runs_root: s3://YOUR_BUCKET/runs
+warehouse: s3://YOUR_BUCKET/warehouse
+kafka:
+  deployment: managed
+  # Use BootstrapBrokerStringSaslIam from aws kafka get-bootstrap-brokers.
+  bootstrap_servers: YOUR_MSK_IAM_BOOTSTRAP:9098
+  security:
+    security.protocol: SASL_SSL
+    sasl.mechanism: OAUTHBEARER          # librdkafka side; Flink renders AWS_MSK_IAM
+    aws.region: YOUR_REGION              # harness pseudo-key: signs the MSK token; stripped before librdkafka
+  # Required for kafka.value_encoding: confluent. Use the registry deployed
+  # with WITH_SCHEMA_REGISTRY=true or a hosted registry. Add
+  # basic_auth_user_info: ${env:NAME} if authentication is required.
+  # schema_registry:
+  #   url: http://schema-registry.ingest-bench.svc:8080/apis/ccompat/v7
+catalog:
+  props:
+    uri: https://glue.YOUR_REGION.amazonaws.com/iceberg
+    warehouse: "YOUR_ACCOUNT_ID"         # Glue's warehouse is a catalog id, not a path
+    rest.sigv4-enabled: "true"
+    rest.signing-name: glue
+    rest.signing-region: YOUR_REGION
+    s3.region: YOUR_REGION
+kubernetes:
+  context: YOUR_KUBE_CONTEXT
+  namespace: ingest-bench
+  harness_service_account: ingest-bench-harness
+  flink_service_account: ingest-bench-flink
+  spark_service_account: ingest-bench-spark
+  service_account_annotations: {}      # only for IRSA users; Pod Identity needs none
+  registry: YOUR_ACCOUNT_ID.dkr.ecr.YOUR_REGION.amazonaws.com
+  aws_region: YOUR_REGION              # rendered as AWS_REGION on every pod
+  # Optional Secret supplying ${env:NAME} values to pods.
+  # See Secrets in docs/run-spec.md for creation instructions.
+  # secret_name: bench-env
+  node_selector: {}
+  tolerations: []
+# Set nonzero prices before publishing results. For an instance costing P/hour with vcpu
+# cores and gib GiB, use P/vcpu/2 and P/gib/2. See docs/methodology.md, Cost.
+pricing: {vcpu_hour_usd: 0.0, gib_hour_usd: 0.0}

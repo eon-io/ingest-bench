@@ -1,0 +1,19 @@
+# Reference tier: REFERENCE_KNOBS plus sizing only. The fleet is untested: grow it while UNDERSIZED.
+name: aws-1mrps-skew-flink-ref
+engine: flink
+track: events-1mrps-skew
+producer:
+  shards: 69
+flink:
+  machine_type: r6i.4xlarge
+  taskmanagers: 5
+  slots: 4
+  tm_cpu: 4
+  tm_mem_mb: 16384
+  jm_cpu: 1
+  jm_mem_mb: 4096
+  # 192 partitions divide evenly across 16 readers.
+  source_parallelism: 16
+  checkpoint_interval: 60s
+  min_pause: 2s
+  distribution_mode: hash

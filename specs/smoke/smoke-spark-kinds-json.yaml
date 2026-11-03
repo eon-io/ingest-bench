@@ -1,0 +1,24 @@
+# Type coverage smoke in JSON: every column kind, with nullable and nested columns.
+name: smoke-spark-kinds-json
+engine: spark
+corpus: kinds-json
+table:
+  partition: identity(partition_key)
+kafka:
+  value_encoding: json
+  partitions: 4
+  key: partition_key
+  partition_assignment: key
+producer:
+  shards: 1
+scoring:
+  freshness_bound_s: 60
+  warmup_s: 60
+spark:
+  # In local[N] mode, executors * executor_cores sets N. All work uses the driver's heap,
+  # so executor_mem_mb only feeds fleet costing in this mode.
+  executors: 2
+  executor_cores: 2
+  executor_mem_mb: 2048
+  trigger_interval: "10 seconds"
+  distribution_mode: hash

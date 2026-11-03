@@ -1,0 +1,11 @@
+# Laptop and CI corpus: five minutes at 5 MB/s, 64 keys, skewed.
+schema: events
+offered_bytes_per_s: 5MB
+duration_s: 300
+partition_count: 64
+alpha: 1.0
+target_row_bytes: 256
+batch_interval_ms: 1000
+corpus_epoch: "2026-01-01T00:00:00Z"
+kafka_key_columns: [user_id, partition_key]
+column_overrides: {}

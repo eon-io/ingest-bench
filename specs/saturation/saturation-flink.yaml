@@ -1,0 +1,35 @@
+# Example overload configuration; adjust the offer for the fixed fleet being tested.
+name: saturation-flink
+engine: flink
+corpus: events-1mrps-uniform
+table:
+  partition: identity(partition_key)
+kafka:
+  partitions: 192
+  key: partition_key
+  partition_assignment: round_robin
+producer:
+  seconds: 30
+  speed: 0.025
+  shards: 2
+  compression: lz4
+  behind_max_ms: 10000
+scoring:
+  mode: saturation
+  warmup_s: 120
+  measurement_s: 900
+  exactness: EXACTLY_ONCE
+  freshness_bound_s: 180
+  geometry_offsets_s: [120, 600, 1020, 1200]
+flink:
+  machine_type: r6i.4xlarge
+  taskmanagers: 2
+  slots: 2
+  source_parallelism: 4
+  tm_cpu: 2
+  tm_mem_mb: 8192
+  jm_cpu: 1
+  jm_mem_mb: 4096
+  checkpoint_interval: 10s
+  min_pause: 2s
+  distribution_mode: hash

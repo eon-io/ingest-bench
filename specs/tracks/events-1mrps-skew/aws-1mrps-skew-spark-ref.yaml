@@ -1,0 +1,15 @@
+# Reference tier: REFERENCE_KNOBS plus sizing only. The fleet is untested: grow it while UNDERSIZED.
+name: aws-1mrps-skew-spark-ref
+engine: spark
+track: events-1mrps-skew
+producer:
+  shards: 69
+spark:
+  machine_type: r6i.4xlarge
+  executors: 5
+  executor_cores: 4
+  executor_mem_mb: 12288
+  driver_cores: 2
+  driver_mem_mb: 4096
+  trigger_interval: "60 seconds"
+  distribution_mode: hash

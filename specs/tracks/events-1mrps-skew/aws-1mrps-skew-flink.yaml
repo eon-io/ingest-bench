@@ -1,0 +1,37 @@
+# Tuned tier: Flink ingest only, Iceberg v1 sink. Smallest fleet that kept up in a 12-minute probe: 34 TaskManagers x
+# 5 writers. 28 x 5 was about 6% short. 14 writers per 56 GiB TaskManager ran out of heap in range calibration.
+name: aws-1mrps-skew-flink
+engine: flink
+track: events-1mrps-skew
+producer:
+  shards: 69
+scoring:
+  gate_adaptation_s: 300
+flink:
+  machine_type: m8g.4xlarge
+  jm_machine_type: m8g.2xlarge
+  taskmanagers: 34
+  # Range calibration keeps every writer's 512 files open for about two checkpoints. Five writers peak near 20 GiB of
+  # the 24 GiB heap.
+  slots: 5
+  tm_cpu: 7
+  tm_mem_mb: 28672
+  jm_cpu: 1
+  jm_mem_mb: 4096
+  checkpoint_interval: 60s
+  min_pause: 2s
+  source_parallelism: 96
+  distribution_mode: range
+  extra_flink_conf:
+    table.exec.iceberg.use-v2-sink: "false"
+    taskmanager.memory.jvm-overhead.min: "3g"
+    taskmanager.memory.jvm-overhead.max: "3g"
+    taskmanager.memory.managed.size: "0m"
+    taskmanager.memory.network.min: "512m"
+    taskmanager.memory.network.max: "512m"
+    taskmanager.load-balance.mode: "TASKS"
+    # EKS node group names; replace them with your cluster's.
+    kubernetes.taskmanager.node-selector: "eks.amazonaws.com/nodegroup:engine"
+    kubernetes.jobmanager.node-selector: "eks.amazonaws.com/nodegroup:shared"
+table:
+  properties: {write.parquet.compression-codec: zstd, write.parquet.compression-level: "1", write.target-file-size-bytes: "536870912"}

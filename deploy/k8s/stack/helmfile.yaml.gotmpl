@@ -1,0 +1,52 @@
+# Install the stack's three releases using setup.sh's environment. Run through
+# setup.sh so identities, storage, and catalog bootstrap are also configured.
+# requiredEnv rejects missing values.
+repositories:
+  - name: strimzi
+    url: quay.io/strimzi-helm
+    oci: true
+  - name: lakekeeper
+    url: https://lakekeeper.github.io/lakekeeper-charts/
+
+helmDefaults:
+  wait: true
+  timeout: 600
+
+releases:
+  - name: strimzi-kafka-operator
+    namespace: strimzi-operator
+    createNamespace: true
+    chart: strimzi/strimzi-kafka-operator
+    version: {{ requiredEnv "STRIMZI_VERSION" }}
+    values:
+      - values/strimzi.yaml.gotmpl
+
+  # Install the operator's CRDs first. setup.sh separately waits for Kafka CR
+  # readiness, which Helm's wait does not track.
+  - name: kafka
+    namespace: {{ requiredEnv "NAMESPACE" }}
+    chart: ./charts/kafka
+    needs:
+      - strimzi-operator/strimzi-kafka-operator
+    values:
+      - brokers: {{ requiredEnv "KAFKA_BROKERS" }}
+        storage:
+          size: {{ requiredEnv "KAFKA_VOLUME_GI" }}Gi
+          class: {{ requiredEnv "KAFKA_STORAGE_CLASS" }}
+        resources:
+          cpu: {{ requiredEnv "KAFKA_CPU" | quote }}
+          memory: {{ requiredEnv "KAFKA_MEM_GI" }}Gi
+        jvmHeap: {{ requiredEnv "KAFKA_JVM_HEAP" }}
+        ioThreads: {{ requiredEnv "KAFKA_IO_THREADS" }}
+        networkThreads: {{ requiredEnv "KAFKA_NETWORK_THREADS" }}
+        metrics:
+          enabled: {{ requiredEnv "KAFKA_METRICS" }}
+        nodeSelector: {{ requiredEnv "KAFKA_NODE_SELECTOR" }}
+        tolerations: {{ requiredEnv "KAFKA_TOLERATIONS" }}
+
+  - name: lakekeeper
+    namespace: {{ requiredEnv "NAMESPACE" }}
+    chart: lakekeeper/lakekeeper
+    version: {{ requiredEnv "LAKEKEEPER_CHART_VERSION" }}
+    values:
+      - values/lakekeeper.yaml.gotmpl

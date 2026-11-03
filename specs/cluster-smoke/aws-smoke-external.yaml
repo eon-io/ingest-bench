@@ -1,0 +1,29 @@
+# External cluster smoke: the harness prepares the topic and table; you start the engine
+# from the staged facts. See docs/adding-an-engine.md for the contract and smoke-
+# external.yaml for the local equivalent.
+# Replace fleet with actual compute resources and machine types used for costing. Fill in
+# external with the engine name, version and tuning notes.
+name: aws-smoke-external
+engine: external
+corpus: smoke
+table:
+  managed_by: harness
+  partition: identity(partition_key)
+kafka:
+  partitions: 4
+  key: partition_key
+  partition_assignment: key
+producer:
+  shards: 1
+  # Use the same network compression as the hour-long specs.
+  compression: lz4
+scoring:
+  freshness_bound_s: 60
+  warmup_s: 60
+external:
+  name: your-engine
+  version: "0.0"
+  notes: "replace with the engine you are scoring"
+fleet:
+  - {role: coordinator, count: 1, vcpu: 1, gib: 2, machine_type: YOUR_MACHINE_TYPE}
+  - {role: worker, count: 2, vcpu: 2, gib: 4, machine_type: YOUR_MACHINE_TYPE}

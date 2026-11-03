@@ -1,0 +1,36 @@
+# Site for Kafka and Lakekeeper installed by deploy/k8s/stack/setup.sh. Copy to site.yaml
+# and replace every YOUR_ placeholder using setup's output.
+# Service addresses are cluster-internal. Teardown, finish and purge open a catalog tunnel
+# from the operator's machine; see In-cluster stack in docs/running.md.
+corpus_root: s3://YOUR_BUCKET/corpus
+runs_root: s3://YOUR_BUCKET/runs
+warehouse: s3://YOUR_BUCKET/warehouse
+kafka:
+  deployment: in-cluster
+  # Plain Kafka listener at <cluster>-kafka-bootstrap.<namespace>.svc.
+  bootstrap_servers: ingest-bench-kafka-bootstrap.ingest-bench.svc:9092
+  security: {}
+  # Required for kafka.value_encoding: confluent. Setup deploys this registry
+  # with WITH_SCHEMA_REGISTRY=true.
+  # schema_registry:
+  #   url: http://schema-registry.ingest-bench.svc:8080/apis/ccompat/v7
+catalog:
+  props:
+    uri: http://lakekeeper.ingest-bench.svc:8181/catalog
+    warehouse: ingest-bench             # the catalog's warehouse name, not a path
+    s3.region: YOUR_REGION
+kubernetes:
+  context: YOUR_KUBE_CONTEXT
+  namespace: ingest-bench               # the NAMESPACE setup.sh was given
+  harness_service_account: ingest-bench-harness
+  flink_service_account: ingest-bench-flink
+  spark_service_account: ingest-bench-spark
+  service_account_annotations: {}
+  registry: YOUR_REGISTRY               # e.g. <account>.dkr.ecr.<region>.amazonaws.com
+  aws_region: YOUR_REGION               # rendered as AWS_REGION on every pod
+  # secret_name: bench-env              # only where a property is written ${env:NAME}
+  node_selector: {}                     # the engine's and the harness's nodes, not the brokers'
+  tolerations: []
+# Set nonzero prices before publishing. Split the fleet instance price between vCPU and
+# GiB using the Cost formula in docs/methodology.md.
+pricing: {vcpu_hour_usd: 0.0, gib_hour_usd: 0.0}

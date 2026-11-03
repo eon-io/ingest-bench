@@ -1,0 +1,28 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListTheBenchmarkBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket"
+      ],
+      "Resource": "arn:aws:s3:::${BUCKET}"
+    },
+    {
+      "Sid": "ReadAndWriteTheThreePrefixes",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:AbortMultipartUpload",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::${BUCKET}/corpus/*",
+        "arn:aws:s3:::${BUCKET}/runs/*",
+        "arn:aws:s3:::${BUCKET}/warehouse/*"
+      ]
+    }
+  ]
+}

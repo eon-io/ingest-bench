@@ -1,0 +1,28 @@
+# Copy to site.yaml and replace every YOUR_ placeholder before loading.
+corpus_root: s3://YOUR_BUCKET/corpus
+runs_root: s3://YOUR_BUCKET/runs
+warehouse: s3://YOUR_BUCKET/warehouse
+kafka:
+  deployment: external
+  # Staging sets replication to min(3, broker count).
+  bootstrap_servers: YOUR_BOOTSTRAP:9092
+  # Passed to every client. Use ${env:NAME} for secrets; see docs/running.md.
+  security: {}
+  # Required only for kafka.value_encoding: confluent.
+  # schema_registry:
+  #   url: http://YOUR_REGISTRY:8080/apis/ccompat/v7
+  #   basic_auth_user_info: ${env:NAME}
+catalog:
+  # Passed to PyIceberg and engine configs. ${env:NAME} is supported here too.
+  props:
+    uri: http://YOUR_CATALOG:8181
+    warehouse: s3://YOUR_BUCKET/warehouse
+# Empty for local runs. For cluster fields, see docs/run-spec.md and
+# site.aws.example.yaml. Cluster sites require credential references;
+# see Secrets in docs/run-spec.md.
+kubernetes: {}
+# For an instance costing P/hour with vcpu cores and gib GiB, use P/vcpu/2
+# and P/gib/2. See Cost in docs/methodology.md. Set prices before publishing.
+pricing:
+  vcpu_hour_usd: 0.0
+  gib_hour_usd: 0.0

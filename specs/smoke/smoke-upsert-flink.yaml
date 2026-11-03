@@ -1,0 +1,30 @@
+# Local upsert smoke: Flink's upsert sink over the smoke-upsert seed, verified at three samples and the end.
+name: smoke-upsert-flink
+engine: flink
+corpus: smoke-upsert
+table:
+  partition: identity(partition_key)
+  # The job converts its equality deletes into deletion vectors, which need format version 3.
+  format_version: 3
+kafka:
+  partitions: 16
+  key: event_id
+  partition_assignment: corpus
+producer:
+  shards: 1
+scoring:
+  freshness_bound_s: 60
+  warmup_s: 60
+  exactness: LATEST_PER_KEY
+  geometry_offsets_s: [61, 127, 193]
+flink:
+  taskmanagers: 2
+  slots: 4
+  tm_cpu: 2
+  tm_mem_mb: 2048
+  jm_cpu: 1
+  jm_mem_mb: 1024
+  checkpoint_interval: 10s
+  min_pause: 2s
+  source_parallelism: 4
+  distribution_mode: hash

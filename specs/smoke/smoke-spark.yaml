@@ -1,0 +1,22 @@
+name: smoke-spark
+engine: spark
+corpus: smoke
+table:
+  partition: identity(partition_key)
+kafka:
+  partitions: 4
+  key: partition_key
+  partition_assignment: key
+producer:
+  shards: 1
+scoring:
+  freshness_bound_s: 60
+  warmup_s: 60
+spark:
+  # In local[N] mode, executors * executor_cores sets N. All work uses the driver's heap;
+  # executor_mem_mb is only used for fleet costing in this mode.
+  executors: 2
+  executor_cores: 2
+  executor_mem_mb: 2048
+  trigger_interval: "10 seconds"
+  distribution_mode: hash

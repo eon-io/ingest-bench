@@ -1,0 +1,35 @@
+name: ci
+on:
+  push: {branches: [main]}
+  pull_request:
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: {enable-cache: true}
+      # Install both tools so cluster-driver tests run instead of skipping.
+      - run: sudo apt-get update && sudo apt-get install -y jq
+      # Pin yq and verify its checksum. Keep the version and digest in sync with
+      # smoke.yml; avoid snap's runner requirements and moving release channels.
+      - run: |
+          sudo curl -fsSL -o /usr/local/bin/yq \
+            https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          printf '%s  /usr/local/bin/yq\n' \
+            a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7 | sha256sum --check --strict
+          sudo chmod +x /usr/local/bin/yq
+          yq --version
+      - run: uv sync --frozen
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: engines/flink/sql-runner/pom.xml
+      - run: mvn -B -f engines/flink/sql-runner/pom.xml verify
+      - run: uv run ruff check . && uv run ruff format --check .
+      - run: uv run mypy
+      # Includes documentation budgets, licence headers and private-data scans.
+      - run: uv run pytest -q -m "not integration"
+      - run: uv run python scripts/validate-results.py
